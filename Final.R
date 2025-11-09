@@ -124,3 +124,13 @@ model_3 <- train(
 )
 print(model_3)
 print(model_3$results)
+
+# Predictions based on the test data set
+pred_1 <- predict(model_1, newdata = test_set)
+postResample(pred_1, test_set$rating)
+
+pred_2 <- predict(model_2, newdata = test_set)
+postResample(pred_2, test_set$rating)
+
+pred_3 <- predict(model_3, newdata = test_set)
+postResample(pred_3, test_set$rating)
