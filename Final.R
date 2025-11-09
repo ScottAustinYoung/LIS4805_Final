@@ -43,10 +43,18 @@ clean_df <- clean_df %>%
       )
     )
 
-# Imputing the missing Size values that were introduced in the previous step.
-median_size <- median(clean_df$size_kb, na.rm = TRUE)
+# Cleaning the Installs column by removing and test and converting to numeric
 clean_df <- clean_df %>%
-  mutate(size_kb = ifelse(is.na(size_kb), median_size, size_kb))
+  mutate(
+    installs = stringr::str_remove_all(installs, "[\\+,]") %>%
+      as.numeric()
+  )
+
+# Log transformation of the reviews variable to stabalize the models.
+clean_df <- clean_df %>%
+  mutate(
+    reviews = log(reviews + 1)
+  )
 
 # Cleaning the Type column, as there is one row with a misinput value.
 clean_df <- clean_df %>%
@@ -79,10 +87,17 @@ model_df <- clean_df %>%
 
 # Creating the training index, train set, and test set.
 set.seed(2)
-train_index <- createDataPartition(model_df$rating, p = 0.6, list = FALSE)
+train_index <- createDataPartition(model_df$rating, p = 0.8, list = FALSE)
 train_set <- model_df[train_index, ]
 test_set <- model_df[-train_index, ]
 
+# Imputing the missing Size values for both test and train data.
+median_size_train <- median(train_set$size_kb, na.rm = TRUE)
+train_set <- train_set %>%
+  mutate(size_kb = ifelse(is.na(size_kb), median_size_train, size_kb))
+median_size_test <- median(test_set$size_kb, na.rm = TRUE)
+test_set <- test_set %>%
+  mutate(size_kb = ifelse(is.na(size_kb), median_size_test, size_kb))
 # Ten-fold cross-validation setup.
 train_control <- trainControl(method = "cv", number = 10)
 
@@ -102,10 +117,11 @@ print(model_1$results)
 # Model 2 Linear Regression across all variables.
 set.seed(2)
 model_2 <- train(
-  rating ~ .,
+  rating ~ . - type,
   data = train_set,
   method = "lm",
   trControl = train_control,
+  preProcess = c("center", "scale", "nzv"),
   metric = "RMSE"
 )
 print(model_2)
