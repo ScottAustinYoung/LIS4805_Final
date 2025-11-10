@@ -82,8 +82,7 @@ model_df <- clean_df %>%
     price,
     content_rating,
     category
-  ) %>%
-  na.omit()
+  )
 
 # Creating the training index, train set, and test set.
 set.seed(2)
