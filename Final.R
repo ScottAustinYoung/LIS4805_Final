@@ -6,11 +6,13 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # install.packages("caret")
 # install.packages("randomForest")
 # install.packages("janitor")
+# install.packages("car")
 
 library(tidyverse)
 library(caret)
 library(randomForest)
 library(janitor)
+library(car)
 
 # The goal overall for this project is to create predictive models that accurately
 # predict the user rating of an application released on the Google PLay Store.
@@ -68,6 +70,19 @@ clean_df <- clean_df %>%
     category = as.factor(category)
   )
 
+# Added a composite variable to make price less granular in its use in the models.
+clean_df <- clean_df %>%
+  mutate(
+    price_cat = case_when(
+      price == 0 ~ "Free",
+      price <= 2 ~ "Low",
+      price <= 10 ~ "Medium",
+      TRUE ~ "High"
+    ),
+    price_cat = factor(price_cat),
+    review_per_install = reviews / (installs + 1)
+  )
+
 # Printing a head table of the cleaned data.
 knitr::kable(head(clean_df))
 
@@ -81,7 +96,9 @@ model_df <- clean_df %>%
     type,
     price,
     content_rating,
-    category
+    category,
+    price_cat,
+    review_per_install
   )
 
 # Creating the training index, train set, and test set.
@@ -97,6 +114,13 @@ train_set <- train_set %>%
 median_size_test <- median(test_set$size_kb, na.rm = TRUE)
 test_set <- test_set %>%
   mutate(size_kb = ifelse(is.na(size_kb), median_size_test, size_kb))
+
+# Fixing multicollinearity with a VIF check.
+vif_model <- lm(
+  rating ~ reviews + size_kb + installs + price + type + content_rating + category,
+  data = train_set
+)
+vif(vif_model)
 # Ten-fold cross-validation setup.
 train_control <- trainControl(method = "cv", number = 10)
 
@@ -129,7 +153,7 @@ print(model_2$results)
 # Model 3 Random Forest
 set.seed(2)
 model_3 <- train(
-  rating ~ .,
+  rating ~ . -type,
   data = train_set,
   method = "rf",
   trControl = train_control,
@@ -140,6 +164,17 @@ model_3 <- train(
 print(model_3)
 print(model_3$results)
 
+# Model 4 on the new variables.
+model_4 <- train(
+  rating ~ reviews + installs + size_kb + price_cat + review_per_install + category,
+  data = train_set,
+  method = "lm",
+  trControl = train_control,
+  metric = "RMSE"
+)
+print(model_4)
+print(model_4$results)
+
 # Predictions based on the test data set
 pred_1 <- predict(model_1, newdata = test_set)
 postResample(pred_1, test_set$rating)
@@ -149,3 +184,6 @@ postResample(pred_2, test_set$rating)
 
 pred_3 <- predict(model_3, newdata = test_set)
 postResample(pred_3, test_set$rating)
+
+pred_4 <- predict(model_4, newdata = test_set)
+postResample(pred_4, test_set$rating)
