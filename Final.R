@@ -13,6 +13,8 @@ library(caret)
 library(randomForest)
 library(janitor)
 library(car)
+library(ggplot2)
+library(stringr)
 
 # The goal overall for this project is to create predictive models that accurately
 # predict the user rating of an application released on the Google PLay Store.
@@ -187,3 +189,65 @@ postResample(pred_3, test_set$rating)
 
 pred_4 <- predict(model_4, newdata = test_set)
 postResample(pred_4, test_set$rating)
+
+# Plots
+plot_data1 <- data.frame(Actual = test_set$rating, Predicted = pred_1)
+plot_data2 <- data.frame(Actual = test_set$rating, Predicted = pred_2)
+plot_data3 <- data.frame(Actual = test_set$rating, Predicted = pred_3)
+plot_data4 <- data.frame(Actual = test_set$rating, Predicted = pred_4)
+
+# Plot 1
+ggplot(plot_data1, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "blue", alpha = 0.5) +  # The dots
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Model 1: Linear Regression (Basic)", 
+       subtitle = "RMSE: 0.486 | R-Squared: 0.041") +
+  theme_minimal()
+
+# Plot 2
+ggplot(plot_data2, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Model 2: Linear Regression (All Vars)", 
+       subtitle = "RMSE: 0.492 | R-Squared: 0.057") +
+  theme_minimal()
+
+# Plot 3
+ggplot(plot_data3, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "darkgreen", alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Model 3: Random Forest (Best Model)", 
+       subtitle = "RMSE: 0.439 | R-Squared: 0.218") +
+  theme_minimal()
+
+# Plot 4
+ggplot(plot_data4, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Model 4: Linear Regression (Engineered)", 
+       subtitle = "RMSE: 0.486 | R-Squared: 0.078") +
+  theme_minimal()
+
+# Plot for  variable importance
+importance_data <- varImp(model_3)$importance %>% 
+  as.data.frame() %>%
+  rownames_to_column("Variable") %>%
+  filter(!str_detect(Variable, "reviews")) %>%
+  mutate(Variable = str_replace_all(Variable, "[_\\.]", " ")) %>%
+  mutate(Variable = str_to_title(Variable)) %>%
+  # Sort by importance
+  arrange(desc(Overall)) %>%
+  slice_head(n = 15)
+
+ggplot(importance_data, aes(x = reorder(Variable, Overall), y = Overall)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Top 15 Drivers of App User Rating", 
+       x = "", 
+       y = "Importance Score") +
+  theme(
+    axis.text.y = element_text(size = 10, color = "black"),
+    plot.title = element_text(size = 14, face = "bold"),
+    panel.grid.major.y = element_blank()
+  )
