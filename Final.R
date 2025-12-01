@@ -283,3 +283,39 @@ ggplot(importance_data, aes(x = reorder(Variable, Overall), y = Overall)) +
     plot.title = element_text(size = 14, face = "bold"),
     panel.grid.major.y = element_blank()
   )
+
+# Testing Classifications
+train_set_class <- train_set %>%
+  mutate(is_successful = ifelse(rating >= 4.0, "High_Rated", "Low_Rated")) %>%
+  mutate(is_successful = factor(is_successful, levels = c("High_Rated", "Low_Rated")))
+
+test_set_class <- test_set %>%
+  mutate(is_successful = ifelse(rating >= 4.0, "High_Rated", "Low_Rated")) %>%
+  mutate(is_successful = factor(is_successful, levels = c("High_Rated", "Low_Rated")))
+
+set.seed(2)
+model_6 <- train(
+  is_successful ~ reviews + size_kb + installs + price + category + content_rating,
+  data = train_set_class,
+  method = "rf",
+  metric = "Accuracy",
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+print(model_6)
+preds_class <- predict(model_6, newdata = test_set_class)
+conf_matrix <- confusionMatrix(preds_class, test_set_class$is_successful)
+print(conf_matrix)
+
+plt_data <- as.data.frame(conf_matrix$table)
+plt_data$Prediction <- factor(plt_data$Prediction, levels = c("High_Rated", "Low_Rated"))
+
+ggplot(plt_data, aes(Prediction, Reference, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = Freq), size = 8, color = "white") +
+  scale_fill_gradient(low = "blue", high = "darkblue") +
+  labs(title = "Model 6: Classification Accuracy",
+       subtitle = paste0("Accuracy: ", round(conf_matrix$overall['Accuracy'] * 100, 1), "%"),
+       x = "Predicted Class",
+       y = "Actual Class") +
+  theme_minimal()
