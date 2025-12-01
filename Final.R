@@ -7,6 +7,10 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # install.packages("randomForest")
 # install.packages("janitor")
 # install.packages("car")
+# install.packages("ggplot2")
+# install.packages("stringr")
+# install.packages("xgboost")
+
 
 library(tidyverse)
 library(caret)
@@ -15,6 +19,7 @@ library(janitor)
 library(car)
 library(ggplot2)
 library(stringr)
+library(xgboost)
 
 # The goal overall for this project is to create predictive models that accurately
 # predict the user rating of an application released on the Google PLay Store.
@@ -177,56 +182,83 @@ model_4 <- train(
 print(model_4)
 print(model_4$results)
 
+# Model 5 Gradient Boosting Algorithm
+model_gb <- train(
+  rating ~. -type,
+  data = train_set,
+  method = "xgbTree",
+  trControl = train_control,
+  metric = "RMSE",
+  verbosity = 0
+)
+
 # Predictions based on the test data set
 pred_1 <- predict(model_1, newdata = test_set)
-postResample(pred_1, test_set$rating)
+metrics_1 <- postResample(pred_1, test_set$rating)
 
 pred_2 <- predict(model_2, newdata = test_set)
-postResample(pred_2, test_set$rating)
+metrics_2 <- postResample(pred_2, test_set$rating)
 
 pred_3 <- predict(model_3, newdata = test_set)
-postResample(pred_3, test_set$rating)
+metrics_3 <- postResample(pred_3, test_set$rating)
 
 pred_4 <- predict(model_4, newdata = test_set)
-postResample(pred_4, test_set$rating)
+metrics_4 <- postResample(pred_4, test_set$rating)
+
+pred_gb <- predict(model_gb, newdata = test_set)
+metrics_gb <- postResample(pred_gb, test_set$rating)
 
 # Plots
 plot_data1 <- data.frame(Actual = test_set$rating, Predicted = pred_1)
 plot_data2 <- data.frame(Actual = test_set$rating, Predicted = pred_2)
 plot_data3 <- data.frame(Actual = test_set$rating, Predicted = pred_3)
 plot_data4 <- data.frame(Actual = test_set$rating, Predicted = pred_4)
+plot_data5 <- data.frame(Actual = test_set$rating, Predicted = pred_gb)
 
 # Plot 1
 ggplot(plot_data1, aes(x = Actual, y = Predicted)) +
-  geom_point(color = "blue", alpha = 0.5) +  # The dots
+  geom_point(color = "blue", alpha = 0.5) +
   geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
   labs(title = "Model 1: Linear Regression (Basic)", 
-       subtitle = "RMSE: 0.486 | R-Squared: 0.041") +
-  theme_minimal()
+       subtitle = paste0("RMSE: ", round(metrics_1['RMSE'], 3), " | R-Squared: ", round(metrics_1['Rsquared'], 3))) +
+  theme_minimal() +
+  coord_cartesian(xlim = c(1, 5), ylim = c(1, 5))
 
 # Plot 2
 ggplot(plot_data2, aes(x = Actual, y = Predicted)) +
   geom_point(color = "blue", alpha = 0.5) +
   geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
   labs(title = "Model 2: Linear Regression (All Vars)", 
-       subtitle = "RMSE: 0.492 | R-Squared: 0.057") +
-  theme_minimal()
+       subtitle = paste0("RMSE: ", round(metrics_2['RMSE'], 3), " | R-Squared: ", round(metrics_2['Rsquared'], 3))) +
+  theme_minimal() +
+  coord_cartesian(xlim = c(1, 5), ylim = c(1, 5))
 
 # Plot 3
 ggplot(plot_data3, aes(x = Actual, y = Predicted)) +
   geom_point(color = "darkgreen", alpha = 0.5) +
   geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
   labs(title = "Model 3: Random Forest (Best Model)", 
-       subtitle = "RMSE: 0.439 | R-Squared: 0.218") +
-  theme_minimal()
+       subtitle = paste0("RMSE: ", round(metrics_3['RMSE'], 3), " | R-Squared: ", round(metrics_3['Rsquared'], 3))) +
+  theme_minimal() +
+  coord_cartesian(xlim = c(1, 5), ylim = c(1, 5))
 
 # Plot 4
 ggplot(plot_data4, aes(x = Actual, y = Predicted)) +
   geom_point(color = "blue", alpha = 0.5) +
   geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
   labs(title = "Model 4: Linear Regression (Engineered)", 
-       subtitle = "RMSE: 0.486 | R-Squared: 0.078") +
-  theme_minimal()
+       subtitle = paste0("RMSE: ", round(metrics_4['RMSE'], 3), " | R-Squared: ", round(metrics_4['Rsquared'], 3))) +
+  theme_minimal() +
+  coord_cartesian(xlim = c(1, 5), ylim = c(1, 5))
+
+# Plot 5
+ggplot(plot_data5, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "purple", alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Model 5: XGBoost (Gradient Boosting)", 
+       subtitle = paste0("RMSE: ", round(metrics_gb['RMSE'], 3), " | R-Squared: ", round(metrics_gb['Rsquared'], 3))) +
+  theme_minimal() +
+  coord_cartesian(xlim = c(1, 5), ylim = c(1, 5))
 
 # Plot for  variable importance
 importance_data <- varImp(model_3)$importance %>% 
