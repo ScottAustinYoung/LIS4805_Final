@@ -265,8 +265,12 @@ importance_data <- varImp(model_3)$importance %>%
   as.data.frame() %>%
   rownames_to_column("Variable") %>%
   filter(!str_detect(Variable, "reviews")) %>%
+  mutate(Variable = str_replace(Variable, "^category", "Category - ")) %>%
+  mutate(Variable = str_replace(Variable, "^content_rating", "Content Rating - ")) %>%
   mutate(Variable = str_replace_all(Variable, "[_\\.]", " ")) %>%
   mutate(Variable = str_to_title(Variable)) %>%
+  mutate(Variable = case_when(str_detect(Variable, "Size Kb") ~ "Size (KB)",
+                              TRUE ~ Variable)) %>%
   # Sort by importance
   arrange(desc(Overall)) %>%
   slice_head(n = 15)
@@ -314,6 +318,8 @@ ggplot(plt_data, aes(Prediction, Reference, fill = Freq)) +
   geom_tile() +
   geom_text(aes(label = Freq), size = 8, color = "white") +
   scale_fill_gradient(low = "blue", high = "darkblue") +
+  scale_x_discrete(labels = c("High_Rated" = "High Rated", "Low_Rated" = "Low Rated")) +
+  scale_y_discrete(labels = c("High_Rated" = "High Rated", "Low_Rated" = "Low Rated")) +
   labs(title = "Model 6: Classification Accuracy",
        subtitle = paste0("Accuracy: ", round(conf_matrix$overall['Accuracy'] * 100, 1), "%"),
        x = "Predicted Class",
